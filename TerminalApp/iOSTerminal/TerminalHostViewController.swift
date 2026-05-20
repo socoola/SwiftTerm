@@ -33,6 +33,8 @@ final class TerminalHostViewController: UIViewController {
             terminalView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
         }
 
+        applySettings()
+
         if let info = connectionInfo {
             terminalView.configure(connectionInfo: info)
         }
@@ -56,5 +58,9 @@ final class TerminalHostViewController: UIViewController {
         if isViewLoaded {
             terminalView.configure(connectionInfo: info)
         }
+    }
+    
+    private func applySettings() {
+        SettingsStore.shared.apply(to: terminalView)
     }
 }

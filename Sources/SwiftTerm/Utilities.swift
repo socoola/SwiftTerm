@@ -8,6 +8,12 @@
 
 import Foundation
 
+struct SyncDebug {
+    static func log(_ message: String) {
+        // No-op: enable for synchronized output debugging
+    }
+}
+
 struct UnicodeUtil {
     /**
      * Returns the number of expected bytes on a well-formed UTF8 string based on the first byte of the sequence

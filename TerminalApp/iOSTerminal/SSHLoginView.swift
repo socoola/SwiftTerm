@@ -8,14 +8,11 @@
 import SwiftUI
 
 struct SSHLoginView: View {
-    @AppStorage("iosterminal.username") private var username = ""
-    @AppStorage("iosterminal.password") private var password = ""
+    @State private var host: String = ""
+    @State private var username: String = ""
+    @State private var password: String = ""
     @State private var connectionInfo: SSHConnectionInfo?
     @State private var animate = false
-
-    private var canConnect: Bool {
-        !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
-    }
 
     var body: some View {
         ZStack {
@@ -83,29 +80,53 @@ struct SSHLoginView: View {
     private var loginCard: some View {
         VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text("Local SSH")
+                Text("SSH Terminal")
                     .font(.system(size: 32, weight: .semibold, design: .serif))
                     .foregroundColor(Color(red: 0.12, green: 0.15, blue: 0.18))
 
-                Text("Connect to localhost:22")
+                Text("Connect to your server")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundColor(Color(red: 0.36, green: 0.42, blue: 0.46))
             }
 
-            CredentialField(
-                title: "Username",
-                placeholder: "whoami",
-                text: $username,
-                isSecure: false
-            )
+            VStack(spacing: 12) {
+                TextField("Host (e.g., 192.168.1.1)", text: $host)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(red: 0.12, green: 0.15, blue: 0.18))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.7))
+                    )
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
 
-            CredentialField(
-                title: "Password",
-                placeholder: "••••••••",
-                text: $password,
-                isSecure: true
-            )
+                TextField("Username", text: $username)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(red: 0.12, green: 0.15, blue: 0.18))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.7))
+                    )
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+
+                SecureField("Password", text: $password)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(red: 0.12, green: 0.15, blue: 0.18))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.7))
+                    )
+            }
+
             Spacer()
+
             Button(action: connect) {
                 HStack(spacing: 12) {
                     Text("Connect")
@@ -131,8 +152,7 @@ struct SSHLoginView: View {
                 .foregroundColor(.white)
             }
             .buttonStyle(.plain)
-            .disabled(!canConnect)
-            .opacity(canConnect ? 1.0 : 0.5)
+            .disabled(host.isEmpty || username.isEmpty || password.isEmpty)
         }
         .padding(24)
         .background(
@@ -148,51 +168,12 @@ struct SSHLoginView: View {
     }
 
     private func connect() {
-        guard canConnect else { return }
-        let trimmedUser = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        username = trimmedUser
-        connectionInfo = SSHConnectionInfo(username: trimmedUser, password: password)
-    }
-}
-
-private struct CredentialField: View {
-    let title: String
-    let placeholder: String
-    @Binding var text: String
-    let isSecure: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundColor(Color(red: 0.45, green: 0.50, blue: 0.54))
-                .tracking(1.2)
-
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.7))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color(red: 0.75, green: 0.80, blue: 0.83), lineWidth: 1)
-                    )
-
-                if isSecure {
-                    SecureField(placeholder, text: $text)
-                        .textContentType(.password)
-                        .disableAutocorrection(true)
-                        .autocapitalization(.none)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                } else {
-                    TextField(placeholder, text: $text)
-                        .textContentType(.username)
-                        .disableAutocorrection(true)
-                        .autocapitalization(.none)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                }
-            }
-        }
+        print("[SSH-Login] Connecting to \(host):22 as \(username)")
+        connectionInfo = SSHConnectionInfo(
+            host: host,
+            username: username,
+            password: password
+        )
     }
 }
 
@@ -225,7 +206,7 @@ private struct TerminalShellView: View {
     }
 }
 
-private struct TerminalHostRepresentable: UIViewControllerRepresentable {
+struct TerminalHostRepresentable: UIViewControllerRepresentable {
     let connectionInfo: SSHConnectionInfo
 
     func makeUIViewController(context: Context) -> TerminalHostViewController {

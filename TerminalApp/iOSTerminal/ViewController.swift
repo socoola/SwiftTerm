@@ -7,26 +7,24 @@
 //
 
 import UIKit
-import SwiftUI
 
 class ViewController: UIViewController {
-    private var hostingController: UIHostingController<SSHLoginView>?
+    private var tabController: TabBarController?
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let rootView = SSHLoginView()
-        let hosting = UIHostingController(rootView: rootView)
-        addChild(hosting)
-        view.addSubview(hosting.view)
-        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        let tabBarController = TabBarController()
+        addChild(tabBarController)
+        view.addSubview(tabBarController.view)
+        tabBarController.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            hosting.view.topAnchor.constraint(equalTo: view.topAnchor),
-            hosting.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            hosting.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            hosting.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tabBarController.view.topAnchor.constraint(equalTo: view.topAnchor),
+            tabBarController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tabBarController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tabBarController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        hosting.didMove(toParent: self)
-        hostingController = hosting
+        tabBarController.didMove(toParent: self)
+        tabController = tabBarController
     }
 }

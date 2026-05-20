@@ -14,6 +14,7 @@ import NIOPosix
 import NIOSSH
 
 struct SSHConnectionInfo: Equatable {
+    let serverId: UUID
     let host: String
     let port: Int
     let username: String
@@ -22,13 +23,15 @@ struct SSHConnectionInfo: Equatable {
     let environment: [String: String]
 
     init(
-        host: String = "localhost",
+        serverId: UUID = UUID(),
+        host: String,
         port: Int = 22,
         username: String,
         password: String,
         term: String = "xterm-256color",
         environment: [String: String] = ["LANG": "en_US.UTF-8"]
     ) {
+        self.serverId = serverId
         self.host = host
         self.port = port
         self.username = username
@@ -45,6 +48,31 @@ private enum SSHClientError: Error {
 private final class AcceptAllHostKeysDelegate: NIOSSHClientServerAuthenticationDelegate {
     func validateHostKey(hostKey: NIOSSHPublicKey, validationCompletePromise: EventLoopPromise<Void>) {
         validationCompletePromise.succeed(())
+    }
+}
+
+private final class SimplePasswordDelegate: NIOSSHClientUserAuthenticationDelegate {
+    let username: String
+    let password: String
+
+    init(username: String, password: String) {
+        self.username = username
+        self.password = password
+    }
+
+    func nextAuthenticationType(availableMethods: NIOSSHAvailableUserAuthenticationMethods, nextChallengePromise: EventLoopPromise<NIOSSHUserAuthenticationOffer?>) {
+        guard availableMethods.contains(.password) else {
+            print("[SSH-Auth] Password auth not available, methods: \(availableMethods)")
+            nextChallengePromise.fail(SSHClientError.invalidChannelType)
+            return
+        }
+        print("[SSH-Auth] Sending password for user: \(username)")
+        let offer = NIOSSHUserAuthenticationOffer(
+            username: username,
+            serviceName: "",
+            offer: .password(.init(password: password))
+        )
+        nextChallengePromise.succeed(offer)
     }
 }
 
@@ -66,18 +94,18 @@ private final class SSHErrorHandler: ChannelInboundHandler {
 private final class SSHShellChannelHandler: ChannelInboundHandler {
     typealias InboundIn = SSHChannelData
 
-    private weak var terminalView: SshTerminalView?
+    private let serverId: UUID
     private let term: String
     private let environment: [String: String]
     private let initialWindowSize: (cols: Int, rows: Int)
 
     init(
-        terminalView: SshTerminalView?,
+        serverId: UUID,
         term: String,
         environment: [String: String],
         initialWindowSize: (cols: Int, rows: Int)
     ) {
-        self.terminalView = terminalView
+        self.serverId = serverId
         self.term = term
         self.environment = environment
         self.initialWindowSize = initialWindowSize
@@ -90,6 +118,7 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
     }
 
     func channelActive(context: ChannelHandlerContext) {
+        print("[SSH-Shell] Channel active, requesting PTY (term=\(term), cols=\(initialWindowSize.cols), rows=\(initialWindowSize.rows))")
         let pty = SSHChannelRequestEvent.PseudoTerminalRequest(
             wantReply: false,
             term: term,
@@ -102,10 +131,12 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
         context.triggerUserOutboundEvent(pty, promise: nil)
 
         for (name, value) in environment {
+            print("[SSH-Shell] Setting env: \(name)=\(value)")
             let env = SSHChannelRequestEvent.EnvironmentRequest(wantReply: false, name: name, value: value)
             context.triggerUserOutboundEvent(env, promise: nil)
         }
 
+        print("[SSH-Shell] Requesting shell")
         context.triggerUserOutboundEvent(SSHChannelRequestEvent.ShellRequest(wantReply: false), promise: nil)
     }
 
@@ -120,13 +151,15 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
             return
         }
 
+        print("[SSH-Shell] Received \(bytes.count) bytes")
         let chunkSize = 1024
         var next = 0
         while next < bytes.count {
             let end = min(next + chunkSize, bytes.count)
             let chunk = bytes[next..<end]
-            DispatchQueue.main.async { [weak terminalView] in
-                terminalView?.feed(byteArray: chunk)
+            let data = Data(chunk)
+            DispatchQueue.main.async {
+                ConnectionManager.shared.receiveData(serverId: self.serverId, data: data)
             }
             next = end
         }
@@ -134,21 +167,31 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
 
     func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
         if let status = event as? SSHChannelRequestEvent.ExitStatus {
-            DispatchQueue.main.async { [weak terminalView] in
-                terminalView?.feed(text: "\n[SSH] Session exited with status \(status.exitStatus)\n")
+            print("[SSH-Shell] Exit status: \(status.exitStatus)")
+            DispatchQueue.main.async {
+                ConnectionManager.shared.receiveText(serverId: self.serverId, text: "\n[SSH] Session exited with status \(status.exitStatus)\n")
             }
         } else if let signal = event as? SSHChannelRequestEvent.ExitSignal {
-            DispatchQueue.main.async { [weak terminalView] in
-                terminalView?.feed(text: "\n[SSH] Session closed: \(signal.signalName)\n")
+            print("[SSH-Shell] Exit signal: \(signal.signalName)")
+            DispatchQueue.main.async {
+                ConnectionManager.shared.receiveText(serverId: self.serverId, text: "\n[SSH] Session closed: \(signal.signalName)\n")
             }
         } else {
+            print("[SSH-Shell] Unhandled event: \(type(of: event))")
             context.fireUserInboundEventTriggered(event)
         }
     }
+    
+    func channelInactive(context: ChannelHandlerContext) {
+        print("[SSH-Shell] Channel became inactive")
+        context.fireChannelInactive()
+    }
 }
 
-private final class SSHConnection {
-    private weak var terminalView: SshTerminalView?
+// MARK: - SSHConnection (公开给 ConnectionManager 使用)
+
+public final class SSHConnection {
+    private let serverId: UUID
     private let host: String
     private let port: Int
     private let username: String
@@ -161,7 +204,7 @@ private final class SSHConnection {
     private var sessionChannel: Channel?
 
     init(
-        terminalView: SshTerminalView,
+        serverId: UUID,
         host: String,
         port: Int,
         username: String,
@@ -170,7 +213,7 @@ private final class SSHConnection {
         environment: [String: String],
         initialWindowSize: (cols: Int, rows: Int)
     ) {
-        self.terminalView = terminalView
+        self.serverId = serverId
         self.host = host
         self.port = port
         self.username = username
@@ -181,6 +224,8 @@ private final class SSHConnection {
     }
 
     func connect() {
+        print("[SSH-Connection] Starting connection to \(host):\(port) as \(username)")
+        ConnectionManager.shared.connect(serverId: serverId)
         let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.group = group
 
@@ -191,6 +236,7 @@ private final class SSHConnection {
             .channelInitializer { [weak self] channel in
                 channel.eventLoop.makeCompletedFuture {
                     guard let self else { return }
+                    print("[SSH-Connection] Channel initialized, setting up SSH handler")
                     let sshHandler = NIOSSHHandler(
                         role: .client(
                             .init(
@@ -204,6 +250,7 @@ private final class SSHConnection {
                     try channel.pipeline.syncOperations.addHandler(sshHandler)
                     try channel.pipeline.syncOperations.addHandler(
                         SSHErrorHandler { [weak self] error in
+                            print("[SSH-Connection] Channel error: \(error)")
                             self?.handleError(error)
                         }
                     )
@@ -216,9 +263,12 @@ private final class SSHConnection {
             guard let self else { return }
             switch result {
             case .failure(let error):
+                print("[SSH-Connection] TCP connection failed: \(error)")
+                ConnectionManager.shared.didError(serverId: self.serverId, error: error.localizedDescription)
                 self.handleError(error)
                 self.shutdownGroup()
             case .success(let channel):
+                print("[SSH-Connection] TCP connected successfully, local: \(channel.localAddress?.description ?? "unknown"), remote: \(channel.remoteAddress?.description ?? "unknown")")
                 self.channel = channel
                 self.createSessionChannel(on: channel)
             }
@@ -226,7 +276,11 @@ private final class SSHConnection {
     }
 
     func send(_ data: Data) {
-        guard let sessionChannel else { return }
+        guard let sessionChannel else {
+            print("[SSH-Connection] Cannot send data: no session channel")
+            return
+        }
+        print("[SSH-Connection] Sending \(data.count) bytes")
         sessionChannel.eventLoop.execute {
             var buffer = sessionChannel.allocator.buffer(capacity: data.count)
             buffer.writeBytes(data)
@@ -236,7 +290,11 @@ private final class SSHConnection {
     }
 
     func resize(cols: Int, rows: Int) {
-        guard cols > 0, rows > 0, let sessionChannel else { return }
+        guard cols > 0, rows > 0, let sessionChannel else {
+            print("[SSH-Connection] Cannot resize: cols=\(cols), rows=\(rows), hasChannel=\(sessionChannel != nil)")
+            return
+        }
+        print("[SSH-Connection] Resizing to \(cols)x\(rows)")
         sessionChannel.eventLoop.execute {
             let event = SSHChannelRequestEvent.WindowChangeRequest(
                 terminalCharacterWidth: cols,
@@ -249,8 +307,10 @@ private final class SSHConnection {
     }
 
     func disconnect() {
+        print("[SSH-Connection] Disconnecting...")
         if let channel, let group {
             channel.closeFuture.whenComplete { [weak self] _ in
+                print("[SSH-Connection] Channel closed")
                 self?.shutdownGroup()
             }
             channel.close(promise: nil)
@@ -260,12 +320,15 @@ private final class SSHConnection {
     }
 
     private func createSessionChannel(on channel: Channel) {
+        print("[SSH-Connection] Creating SSH session channel...")
         channel.pipeline.handler(type: NIOSSHHandler.self).whenComplete { [weak self] result in
             guard let self else { return }
             switch result {
             case .failure(let error):
+                print("[SSH-Connection] Failed to get SSH handler: \(error)")
                 self.handleError(error)
             case .success(let sshHandler):
+                print("[SSH-Connection] Got SSH handler, creating session channel...")
                 let promise = channel.eventLoop.makePromise(of: Channel.self)
                 sshHandler.createChannel(promise, channelType: .session) { [weak self] childChannel, channelType in
                     guard let self else {
@@ -273,12 +336,14 @@ private final class SSHConnection {
                     }
 
                     guard channelType == .session else {
+                        print("[SSH-Connection] Invalid channel type: \(channelType)")
                         return channel.eventLoop.makeFailedFuture(SSHClientError.invalidChannelType)
                     }
 
+                    print("[SSH-Connection] Configuring shell channel handler...")
                     return childChannel.eventLoop.makeCompletedFuture {
                         let handler = SSHShellChannelHandler(
-                            terminalView: self.terminalView,
+                            serverId: self.serverId,
                             term: self.term,
                             environment: self.environment,
                             initialWindowSize: self.initialWindowSize
@@ -287,6 +352,7 @@ private final class SSHConnection {
                         try sync.addHandler(handler)
                         try sync.addHandler(
                             SSHErrorHandler { [weak self] error in
+                                print("[SSH-Connection] Shell channel error: \(error)")
                                 self?.handleError(error)
                             }
                         )
@@ -297,36 +363,35 @@ private final class SSHConnection {
                     guard let self else { return }
                     switch result {
                     case .failure(let error):
+                        print("[SSH-Connection] Session channel creation failed: \(error)")
+                        ConnectionManager.shared.didError(serverId: self.serverId, error: error.localizedDescription)
                         self.handleError(error)
                     case .success(let childChannel):
+                        print("[SSH-Connection] Session channel created successfully")
+                        ConnectionManager.shared.didConnect(serverId: self.serverId)
+                        ConnectionManager.shared.storeConnection(self, for: self.serverId)
                         self.sessionChannel = childChannel
-                        self.sendInitialResize()
                     }
                 }
             }
         }
     }
 
-    private func sendInitialResize() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self, let terminal = self.terminalView?.getTerminal() else { return }
-            self.resize(cols: terminal.cols, rows: terminal.rows)
-        }
-    }
-
     private func handleError(_ error: Error) {
-        DispatchQueue.main.async { [weak terminalView] in
-            terminalView?.feed(text: "[ERROR] \(error)\n")
-        }
+        print("[SSH-Connection] ERROR: \(error)")
+        ConnectionManager.shared.receiveText(serverId: serverId, text: "[ERROR] \(error)\n")
     }
 
     private func shutdownGroup() {
         if let group = group {
+            print("[SSH-Connection] Shutting down event loop group")
             self.group = nil
             group.shutdownGracefully { _ in }
         }
     }
 }
+
+// MARK: - SshTerminalView
 
 public class SshTerminalView: TerminalView, TerminalViewDelegate {
     private var sshConnection: SSHConnection?
@@ -343,17 +408,42 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
     }
 
     deinit {
-        sshConnection?.disconnect()
+        print("[SshTerminalView] Deinitializing, unregistering from ConnectionManager")
+        if let info = configuredInfo {
+            ConnectionManager.shared.unregisterTerminalView(self)
+        }
     }
 
     func configure(connectionInfo: SSHConnectionInfo) {
+        print("[SshTerminalView] Configuring with host: \(connectionInfo.host):\(connectionInfo.port), user: \(connectionInfo.username)")
+        
+        // 如果配置信息相同，只是重新注册视图
         if configuredInfo == connectionInfo {
+            print("[SshTerminalView] Same connection info, re-registering")
+            ConnectionManager.shared.registerTerminalView(self, for: connectionInfo.serverId)
             return
         }
 
         configuredInfo = connectionInfo
-        sshConnection?.disconnect()
-        startConnection(connectionInfo: connectionInfo)
+        
+        // 检查是否已有活跃连接
+        if let existing = ConnectionManager.shared.getConnection(for: connectionInfo.serverId) {
+            print("[SshTerminalView] Reusing existing connection")
+            sshConnection = existing
+            ConnectionManager.shared.registerTerminalView(self, for: connectionInfo.serverId)
+            // 发送 resize 以适应新视图的尺寸
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let terminal = self.getTerminal()
+                let cols = terminal.cols > 0 ? terminal.cols : 80
+                let rows = terminal.rows > 0 ? terminal.rows : 24
+                existing.resize(cols: cols, rows: rows)
+            }
+        } else {
+            print("[SshTerminalView] Creating new connection")
+            startConnection(connectionInfo: connectionInfo)
+        }
+        
         DispatchQueue.main.async { [weak self] in
             self?.becomeFirstResponder()
         }
@@ -363,9 +453,10 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
         let terminal = getTerminal()
         let cols = terminal.cols > 0 ? terminal.cols : 80
         let rows = terminal.rows > 0 ? terminal.rows : 24
+        print("[SshTerminalView] Starting connection with terminal size: \(cols)x\(rows)")
 
         let connection = SSHConnection(
-            terminalView: self,
+            serverId: connectionInfo.serverId,
             host: connectionInfo.host,
             port: connectionInfo.port,
             username: connectionInfo.username,
@@ -375,6 +466,8 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
             initialWindowSize: (cols: cols, rows: rows)
         )
         sshConnection = connection
+        ConnectionManager.shared.storeConnection(connection, for: connectionInfo.serverId)
+        ConnectionManager.shared.registerTerminalView(self, for: connectionInfo.serverId)
         connection.connect()
     }
 

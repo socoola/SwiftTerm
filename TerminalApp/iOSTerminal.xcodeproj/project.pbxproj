@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2B88F5CAD19FAF97332D5881 /* ConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88F3437E0DAFC4C10092AC74 /* ConnectionManager.swift */; };
 		4929B7AE2F191AAB0075C162 /* NIOSSH in Frameworks */ = {isa = PBXBuildFile; productRef = 4929B7AD2F191AAB0075C162 /* NIOSSH */; };
 		4936D22124512AF2005CEE27 /* UIKitSshTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4936D22024512AF2005CEE27 /* UIKitSshTerminalView.swift */; };
 		4959FFDB2447F971001F42C0 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 4959FFDA2447F971001F42C0 /* SwiftTerm */; };
@@ -18,6 +19,12 @@
 		49F5B0B32F2E8C1A00ABCD12 /* NIOPosix in Frameworks */ = {isa = PBXBuildFile; productRef = 49F5B0B22F2E8C1A00ABCD12 /* NIOPosix */; };
 		49F5B0B52F2E8D1A00ABCD12 /* SSHLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49F5B0B42F2E8D1A00ABCD12 /* SSHLoginView.swift */; };
 		49F5B0B72F2E8E1A00ABCD12 /* TerminalHostViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49F5B0B62F2E8E1A00ABCD12 /* TerminalHostViewController.swift */; };
+		5C3E41B4D2C1226EAAD48F1E /* SSHServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C95B9D946551B362DE7DB018 /* SSHServer.swift */; };
+		784537862C3C763943C80727 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 055B65B3DEA8C8BDB2939FED /* SettingsStore.swift */; };
+		ADBE25B6048061D90B66A021 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2417AF6EE564C7FA7D872513 /* MainTabView.swift */; };
+		BA9C75167B0C9429957EC59A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F426A1922D83A03ED2BC69 /* SettingsView.swift */; };
+		BB8F19B03B08E247680C1097 /* ServerEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC1A2BDE6951110093937E0 /* ServerEditView.swift */; };
+		DAF51520D1B97F352C9AE97E /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D0A1241F05CEF85FADB13E /* ServerListView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -34,6 +41,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		055B65B3DEA8C8BDB2939FED /* SettingsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		2417AF6EE564C7FA7D872513 /* MainTabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		45D0A1241F05CEF85FADB13E /* ServerListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
 		4936D22024512AF2005CEE27 /* UIKitSshTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIKitSshTerminalView.swift; sourceTree = "<group>"; };
 		49BD1A5A224207B5005A2252 /* iOSTerminal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSTerminal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49BD1A5D224207B5005A2252 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -45,6 +55,10 @@
 		49F5B0B42F2E8D1A00ABCD12 /* SSHLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHLoginView.swift; sourceTree = "<group>"; };
 		49F5B0B62F2E8E1A00ABCD12 /* TerminalHostViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostViewController.swift; sourceTree = "<group>"; };
 		75247796245897E3001B12E7 /* SwiftTerm */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SwiftTerm; path = ..; sourceTree = "<group>"; };
+		88F3437E0DAFC4C10092AC74 /* ConnectionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectionManager.swift; sourceTree = "<group>"; };
+		8EC1A2BDE6951110093937E0 /* ServerEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerEditView.swift; sourceTree = "<group>"; };
+		C8F426A1922D83A03ED2BC69 /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C95B9D946551B362DE7DB018 /* SSHServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SSHServer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +114,13 @@
 				49BD1A66224207B7005A2252 /* LaunchScreen.storyboard */,
 				49BD1A69224207B7005A2252 /* Info.plist */,
 				4936D22024512AF2005CEE27 /* UIKitSshTerminalView.swift */,
+				C95B9D946551B362DE7DB018 /* SSHServer.swift */,
+				45D0A1241F05CEF85FADB13E /* ServerListView.swift */,
+				8EC1A2BDE6951110093937E0 /* ServerEditView.swift */,
+				055B65B3DEA8C8BDB2939FED /* SettingsStore.swift */,
+				C8F426A1922D83A03ED2BC69 /* SettingsView.swift */,
+				88F3437E0DAFC4C10092AC74 /* ConnectionManager.swift */,
+				2417AF6EE564C7FA7D872513 /* MainTabView.swift */,
 			);
 			path = iOSTerminal;
 			sourceTree = "<group>";
@@ -191,6 +212,13 @@
 				4936D22124512AF2005CEE27 /* UIKitSshTerminalView.swift in Sources */,
 				49BD1A60224207B5005A2252 /* ViewController.swift in Sources */,
 				49BD1A5E224207B5005A2252 /* AppDelegate.swift in Sources */,
+				5C3E41B4D2C1226EAAD48F1E /* SSHServer.swift in Sources */,
+				DAF51520D1B97F352C9AE97E /* ServerListView.swift in Sources */,
+				BB8F19B03B08E247680C1097 /* ServerEditView.swift in Sources */,
+				784537862C3C763943C80727 /* SettingsStore.swift in Sources */,
+				BA9C75167B0C9429957EC59A /* SettingsView.swift in Sources */,
+				2B88F5CAD19FAF97332D5881 /* ConnectionManager.swift in Sources */,
+				ADBE25B6048061D90B66A021 /* MainTabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,14 +368,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = PJQC57N853;
+				DEVELOPMENT_TEAM = F82GZYPJ8K;
 				INFOPLIST_FILE = "$(PRODUCT_NAME)/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.tirania.SwiftTerm.iosSampleApp;
+				PRODUCT_BUNDLE_IDENTIFIER = org.sdfd.SwiftTerm.iosSampleApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -359,14 +387,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = PJQC57N853;
+				DEVELOPMENT_TEAM = F82GZYPJ8K;
 				INFOPLIST_FILE = "$(PRODUCT_NAME)/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.tirania.SwiftTerm.iosSampleApp;
+				PRODUCT_BUNDLE_IDENTIFIER = org.sdfd.SwiftTerm.iosSampleApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
