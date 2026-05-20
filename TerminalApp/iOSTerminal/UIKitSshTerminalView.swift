@@ -199,6 +199,9 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
     
     func channelInactive(context: ChannelHandlerContext) {
         print("[SSH-Shell] Channel became inactive")
+        DispatchQueue.main.async {
+            ConnectionManager.shared.didDisconnect(serverId: self.serverId)
+        }
         context.fireChannelInactive()
     }
 }
@@ -407,6 +410,8 @@ public final class SSHConnection {
     }
 }
 
+extension SSHConnection: ManagedConnection {}
+
 // MARK: - SshTerminalView
 
 public class SshTerminalView: TerminalView, TerminalViewDelegate {
@@ -425,7 +430,7 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
 
     deinit {
         print("[SshTerminalView] Deinitializing, unregistering from ConnectionManager")
-        if let info = configuredInfo {
+        if configuredInfo != nil {
             ConnectionManager.shared.unregisterTerminalView(self)
         }
     }

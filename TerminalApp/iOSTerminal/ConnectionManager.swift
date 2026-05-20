@@ -15,39 +15,63 @@ enum ConnectionStatus: Equatable {
     case error(String)
 }
 
+protocol ManagedConnection: AnyObject {
+    func disconnect()
+}
+
+protocol ConnectionDisconnecting {
+    func disconnect(serverId: UUID)
+}
+
 class ConnectionManager: ObservableObject {
     static let shared = ConnectionManager()
     
     @Published var connectionStatuses: [UUID: ConnectionStatus] = [:]
     
     // 活跃的 SSH 连接（下滑关闭后保持）
-    private var connections: [UUID: SSHConnection] = [:]
+    private var connections: [UUID: any ManagedConnection] = [:]
     
     // 数据缓冲区（每个服务器最近的输出，用于重新打开时回放）
     private var dataBuffers: [UUID: Data] = [:]
     private let maxBufferSize = 100 * 1024 // 100KB
     
     // 当前显示数据的 TerminalView
-    weak var activeTerminalView: SshTerminalView?
+    private weak var activeTerminalOwner: AnyObject?
+    private var activeOutputHandler: ((Data) -> Void)?
+    private var activeServerId: UUID?
     
     private init() {}
     
     // MARK: - 终端视图管理
     
     func registerTerminalView(_ view: SshTerminalView, for serverId: UUID) {
-        activeTerminalView = view
+        registerOutputHandler(owner: view, for: serverId) { [weak view] data in
+            let bytes = [UInt8](data)
+            view?.feed(byteArray: bytes[...])
+        }
+    }
+    
+    func registerOutputHandler(owner: AnyObject, for serverId: UUID, outputHandler: @escaping (Data) -> Void) {
+        activeTerminalOwner = owner
+        activeOutputHandler = outputHandler
+        activeServerId = serverId
         // 回放缓冲区数据
         if let buffer = dataBuffers[serverId], !buffer.isEmpty {
             DispatchQueue.main.async {
-                let bytes = [UInt8](buffer)
-                view.feed(byteArray: bytes[...])
+                outputHandler(buffer)
             }
         }
     }
     
     func unregisterTerminalView(_ view: SshTerminalView) {
-        if activeTerminalView === view {
-            activeTerminalView = nil
+        unregisterOutputHandler(owner: view)
+    }
+    
+    func unregisterOutputHandler(owner: AnyObject) {
+        if activeTerminalOwner === owner {
+            activeTerminalOwner = nil
+            activeOutputHandler = nil
+            activeServerId = nil
         }
     }
     
@@ -64,8 +88,8 @@ class ConnectionManager: ObservableObject {
         
         // 转发给当前活跃的终端视图
         DispatchQueue.main.async { [weak self] in
-            let bytes = [UInt8](data)
-            self?.activeTerminalView?.feed(byteArray: bytes[...])
+            guard self?.activeServerId == serverId else { return }
+            self?.activeOutputHandler?(data)
         }
     }
     
@@ -77,12 +101,12 @@ class ConnectionManager: ObservableObject {
     
     // MARK: - 连接管理
     
-    func storeConnection(_ connection: SSHConnection, for serverId: UUID) {
+    func storeConnection(_ connection: any ManagedConnection, for serverId: UUID) {
         connections[serverId] = connection
     }
     
     func getConnection(for serverId: UUID) -> SSHConnection? {
-        connections[serverId]
+        connections[serverId] as? SSHConnection
     }
     
     func connect(serverId: UUID) {
@@ -98,16 +122,35 @@ class ConnectionManager: ObservableObject {
             connection.disconnect()
         }
         dataBuffers.removeValue(forKey: serverId)
-        connectionStatuses.removeValue(forKey: serverId)
+        connectionStatuses[serverId] = .disconnected
+        if activeServerId == serverId {
+            activeTerminalOwner = nil
+            activeOutputHandler = nil
+            activeServerId = nil
+        }
     }
     
     func didError(serverId: UUID, error: String) {
+        connections.removeValue(forKey: serverId)
         connectionStatuses[serverId] = .error(error)
         // 3秒后清除错误状态
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             if self?.connectionStatuses[serverId] == .error(error) {
                 self?.connectionStatuses[serverId] = .disconnected
             }
+        }
+    }
+    
+    func didDisconnect(serverId: UUID, clearBuffer: Bool = false) {
+        connections.removeValue(forKey: serverId)
+        if clearBuffer {
+            dataBuffers.removeValue(forKey: serverId)
+        }
+        connectionStatuses[serverId] = .disconnected
+        if activeServerId == serverId {
+            activeTerminalOwner = nil
+            activeOutputHandler = nil
+            activeServerId = nil
         }
     }
     
@@ -118,4 +161,15 @@ class ConnectionManager: ObservableObject {
     func isConnected(_ serverId: UUID) -> Bool {
         connections[serverId] != nil && connectionStatuses[serverId] == .connected
     }
+    
+    func resetForTesting() {
+        connections.removeAll()
+        dataBuffers.removeAll()
+        connectionStatuses.removeAll()
+        activeTerminalOwner = nil
+        activeOutputHandler = nil
+        activeServerId = nil
+    }
 }
+
+extension ConnectionManager: ConnectionDisconnecting {}

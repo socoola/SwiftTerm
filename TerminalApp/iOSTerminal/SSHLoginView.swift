@@ -20,7 +20,7 @@ struct SSHLoginView: View {
 
             if let info = connectionInfo {
                 TerminalShellView(connectionInfo: info) {
-                    connectionInfo = nil
+                    connectionInfo = Self.disconnectSession(info, using: ConnectionManager.shared)
                 }
             } else {
                 loginCard
@@ -174,6 +174,15 @@ struct SSHLoginView: View {
             username: username,
             password: password
         )
+    }
+    
+    static func disconnectSession(
+        _ info: SSHConnectionInfo?,
+        using connectionManager: any ConnectionDisconnecting
+    ) -> SSHConnectionInfo? {
+        guard let info else { return nil }
+        connectionManager.disconnect(serverId: info.serverId)
+        return nil
     }
 }
 

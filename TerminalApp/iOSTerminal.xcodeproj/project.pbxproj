@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2B88F5CAD19FAF97332D5881 /* ConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88F3437E0DAFC4C10092AC74 /* ConnectionManager.swift */; };
+		3D875D8129B44748A0F8BCAA /* ConnectionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B2C2B8643DE8D2B236D730 /* ConnectionFlowTests.swift */; };
 		4929B7AE2F191AAB0075C162 /* NIOSSH in Frameworks */ = {isa = PBXBuildFile; productRef = 4929B7AD2F191AAB0075C162 /* NIOSSH */; };
 		4936D22124512AF2005CEE27 /* UIKitSshTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4936D22024512AF2005CEE27 /* UIKitSshTerminalView.swift */; };
 		4959FFDB2447F971001F42C0 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 4959FFDA2447F971001F42C0 /* SwiftTerm */; };
@@ -43,6 +44,7 @@
 /* Begin PBXFileReference section */
 		055B65B3DEA8C8BDB2939FED /* SettingsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		2417AF6EE564C7FA7D872513 /* MainTabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		3444E8584AFAC41362D79DB4 /* iOSTerminalTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iOSTerminalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		45D0A1241F05CEF85FADB13E /* ServerListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
 		4936D22024512AF2005CEE27 /* UIKitSshTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIKitSshTerminalView.swift; sourceTree = "<group>"; };
 		49BD1A5A224207B5005A2252 /* iOSTerminal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSTerminal.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -54,6 +56,7 @@
 		49BD1A69224207B7005A2252 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		49F5B0B42F2E8D1A00ABCD12 /* SSHLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHLoginView.swift; sourceTree = "<group>"; };
 		49F5B0B62F2E8E1A00ABCD12 /* TerminalHostViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostViewController.swift; sourceTree = "<group>"; };
+		63B2C2B8643DE8D2B236D730 /* ConnectionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionFlowTests.swift; sourceTree = "<group>"; };
 		75247796245897E3001B12E7 /* SwiftTerm */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SwiftTerm; path = ..; sourceTree = "<group>"; };
 		88F3437E0DAFC4C10092AC74 /* ConnectionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectionManager.swift; sourceTree = "<group>"; };
 		8EC1A2BDE6951110093937E0 /* ServerEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerEditView.swift; sourceTree = "<group>"; };
@@ -72,6 +75,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EBB1FC814A53F32C29BC250B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -87,6 +97,7 @@
 			children = (
 				75247796245897E3001B12E7 /* SwiftTerm */,
 				49BD1A5C224207B5005A2252 /* iOSTerminal */,
+				CF7F8BFA6D413793B72E6800 /* iOSTerminalTests */,
 				49BD1A5B224207B5005A2252 /* Products */,
 				49AE019F2410AB0A0051E902 /* Frameworks */,
 			);
@@ -98,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				49BD1A5A224207B5005A2252 /* iOSTerminal.app */,
+				3444E8584AFAC41362D79DB4 /* iOSTerminalTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -123,6 +135,14 @@
 				2417AF6EE564C7FA7D872513 /* MainTabView.swift */,
 			);
 			path = iOSTerminal;
+			sourceTree = "<group>";
+		};
+		CF7F8BFA6D413793B72E6800 /* iOSTerminalTests */ = {
+			isa = PBXGroup;
+			children = (
+				63B2C2B8643DE8D2B236D730 /* ConnectionFlowTests.swift */,
+			);
+			path = iOSTerminalTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -151,7 +171,42 @@
 			productReference = 49BD1A5A224207B5005A2252 /* iOSTerminal.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BBEC35911D3EC3AB9A28C9D9 /* iOSTerminalTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 227027F905B5AE8E5B1E2A83 /* Build configuration list for PBXNativeTarget "iOSTerminalTests" */;
+			buildPhases = (
+				B974D9145AF0E3BE267C5E69 /* Sources */,
+				EBB1FC814A53F32C29BC250B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3D307D10A590E4AA4A255218 /* PBXTargetDependency */,
+			);
+			name = iOSTerminalTests;
+			productName = iOSTerminalTests;
+			productReference = 3444E8584AFAC41362D79DB4 /* iOSTerminalTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		3D307D10A590E4AA4A255218 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 49BD1A59224207B5005A2252 /* iOSTerminal */;
+			targetProxy = 2A59C1881F4A8655CBCA5235 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		2A59C1881F4A8655CBCA5235 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 49BD1A52224207B4005A2252 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 49BD1A59224207B5005A2252;
+			remoteInfo = iOSTerminal;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		49BD1A52224207B4005A2252 /* Project object */ = {
@@ -164,6 +219,10 @@
 					49BD1A59224207B5005A2252 = {
 						CreatedOnToolsVersion = 10.1;
 						LastSwiftMigration = 1130;
+					};
+					BBEC35911D3EC3AB9A28C9D9 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 49BD1A59224207B5005A2252;
 					};
 				};
 			};
@@ -185,6 +244,7 @@
 			projectRoot = "";
 			targets = (
 				49BD1A59224207B5005A2252 /* iOSTerminal */,
+				BBEC35911D3EC3AB9A28C9D9 /* iOSTerminalTests */,
 			);
 		};
 /* End PBXProject section */
@@ -219,6 +279,14 @@
 				BA9C75167B0C9429957EC59A /* SettingsView.swift in Sources */,
 				2B88F5CAD19FAF97332D5881 /* ConnectionManager.swift in Sources */,
 				ADBE25B6048061D90B66A021 /* MainTabView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B974D9145AF0E3BE267C5E69 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3D875D8129B44748A0F8BCAA /* ConnectionFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,6 +469,40 @@
 			};
 			name = Release;
 		};
+		76FD14E6A8B08542EB5F0F63 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = F82GZYPJ8K;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.sdfd.SwiftTerm.iosSampleAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/iOSTerminal.app/iOSTerminal";
+			};
+			name = Debug;
+		};
+		AA50698E40E75E6307328AD9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = F82GZYPJ8K;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.sdfd.SwiftTerm.iosSampleAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/iOSTerminal.app/iOSTerminal";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -418,6 +520,15 @@
 			buildConfigurations = (
 				49BD1A78224207B7005A2252 /* Debug */,
 				49BD1A79224207B7005A2252 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		227027F905B5AE8E5B1E2A83 /* Build configuration list for PBXNativeTarget "iOSTerminalTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				76FD14E6A8B08542EB5F0F63 /* Debug */,
+				AA50698E40E75E6307328AD9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

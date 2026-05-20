@@ -12,6 +12,7 @@ struct ServerEditView: View {
     
     var server: SSHServer?
     var onSave: (SSHServer) -> Void
+    var onDelete: ((SSHServer) -> Void)?
     
     @State private var name: String
     @State private var host: String
@@ -22,9 +23,14 @@ struct ServerEditView: View {
     
     private var isEditing: Bool { server != nil }
     
-    init(server: SSHServer? = nil, onSave: @escaping (SSHServer) -> Void) {
+    init(
+        server: SSHServer? = nil,
+        onSave: @escaping (SSHServer) -> Void,
+        onDelete: ((SSHServer) -> Void)? = nil
+    ) {
         self.server = server
         self.onSave = onSave
+        self.onDelete = onDelete
         
         _name = State(initialValue: server?.name ?? "")
         _host = State(initialValue: server?.host ?? "")
@@ -116,10 +122,9 @@ struct ServerEditView: View {
                 if isEditing {
                     Section {
                         Button(role: .destructive) {
-                            if let server {
-                                onSave(server)
-                                dismiss()
-                            }
+                            guard let server else { return }
+                            onDelete?(server)
+                            dismiss()
                         } label: {
                             HStack {
                                 Spacer()
@@ -127,6 +132,7 @@ struct ServerEditView: View {
                                 Spacer()
                             }
                         }
+                        .disabled(onDelete == nil)
                     }
                 }
             }

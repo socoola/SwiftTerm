@@ -7,6 +7,10 @@
 
 import Foundation
 
+protocol ServerDeleting {
+    func delete(_ server: SSHServer)
+}
+
 struct SSHServer: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
@@ -96,3 +100,5 @@ class ServerStore: ObservableObject {
         servers = decoded
     }
 }
+
+extension ServerStore: ServerDeleting {}

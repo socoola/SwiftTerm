@@ -54,10 +54,21 @@ struct ServerListView: View {
             })
         }
         .sheet(item: $editingServer) { server in
-            ServerEditView(server: server) { updated in
-                store.update(updated)
-                editingServer = nil
-            }
+            ServerEditView(
+                server: server,
+                onSave: { updated in
+                    store.update(updated)
+                    editingServer = nil
+                },
+                onDelete: { deleted in
+                    Self.deleteServer(
+                        deleted,
+                        store: store,
+                        connectionManager: ConnectionManager.shared
+                    )
+                    editingServer = nil
+                }
+            )
         }
         .sheet(isPresented: $showAddSheet) {
             ServerEditView { server in
@@ -77,7 +88,11 @@ struct ServerListView: View {
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            store.delete(server)
+                            Self.deleteServer(
+                                server,
+                                store: store,
+                                connectionManager: ConnectionManager.shared
+                            )
                         } label: {
                             Label("删除", systemImage: "trash")
                         }
@@ -125,6 +140,15 @@ struct ServerListView: View {
     private var background: some View {
         Color(red: 0.97, green: 0.97, blue: 0.95)
             .ignoresSafeArea()
+    }
+    
+    static func deleteServer(
+        _ server: SSHServer,
+        store: any ServerDeleting,
+        connectionManager: any ConnectionDisconnecting
+    ) {
+        connectionManager.disconnect(serverId: server.id)
+        store.delete(server)
     }
 }
 
