@@ -18,6 +18,7 @@ struct SSHServer: Identifiable, Codable, Equatable {
     var port: Int
     var username: String
     var password: String
+    var startupScript: String?
     var lastConnected: Date?
     
     init(
@@ -27,6 +28,7 @@ struct SSHServer: Identifiable, Codable, Equatable {
         port: Int = 22,
         username: String,
         password: String,
+        startupScript: String? = nil,
         lastConnected: Date? = nil
     ) {
         self.id = id
@@ -35,6 +37,7 @@ struct SSHServer: Identifiable, Codable, Equatable {
         self.port = port
         self.username = username
         self.password = password
+        self.startupScript = startupScript
         self.lastConnected = lastConnected
     }
     
@@ -48,7 +51,8 @@ struct SSHServer: Identifiable, Codable, Equatable {
             host: host,
             port: port,
             username: username,
-            password: password
+            password: password,
+            startupScript: startupScript
         )
     }
 }

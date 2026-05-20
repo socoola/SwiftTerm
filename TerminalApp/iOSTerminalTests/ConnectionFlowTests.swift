@@ -118,6 +118,41 @@ final class ConnectionFlowTests: XCTestCase {
         XCTAssertEqual(store.deletedServers, [server])
     }
 
+    func testServerConnectionInfoCarriesStartupScript() {
+        let server = SSHServer(
+            id: UUID(),
+            name: "A",
+            host: "127.0.0.1",
+            username: "u",
+            password: "p",
+            startupScript: "cd /tmp\nls"
+        )
+
+        XCTAssertEqual(server.connectionInfo.startupScript, "cd /tmp\nls")
+    }
+
+    func testPreparedStartupScriptAppendsTrailingNewline() {
+        let info = SSHConnectionInfo(
+            host: "127.0.0.1",
+            username: "u",
+            password: "p",
+            startupScript: "echo hello"
+        )
+
+        XCTAssertEqual(info.preparedStartupScript, "echo hello\n")
+    }
+
+    func testPreparedStartupScriptDropsBlankContent() {
+        let info = SSHConnectionInfo(
+            host: "127.0.0.1",
+            username: "u",
+            password: "p",
+            startupScript: " \n "
+        )
+
+        XCTAssertNil(info.preparedStartupScript)
+    }
+
     private func drainMainQueue(file: StaticString = #filePath, line: UInt = #line) {
         let expectation = expectation(description: "main queue drained")
         DispatchQueue.main.async {

@@ -19,6 +19,7 @@ struct SSHConnectionInfo: Equatable {
     let port: Int
     let username: String
     let password: String
+    let startupScript: String?
     let term: String
     let environment: [String: String]
 
@@ -28,6 +29,7 @@ struct SSHConnectionInfo: Equatable {
         port: Int = 22,
         username: String,
         password: String,
+        startupScript: String? = nil,
         term: String = "xterm-256color",
         environment: [String: String] = ["LANG": "en_US.UTF-8"]
     ) {
@@ -36,8 +38,15 @@ struct SSHConnectionInfo: Equatable {
         self.port = port
         self.username = username
         self.password = password
+        self.startupScript = startupScript
         self.term = term
         self.environment = environment
+    }
+
+    var preparedStartupScript: String? {
+        let trimmed = startupScript?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return nil }
+        return trimmed.hasSuffix("\n") ? trimmed : trimmed + "\n"
     }
 }
 
@@ -218,6 +227,7 @@ public final class SSHConnection {
     private let port: Int
     private let username: String
     private let password: String
+    private let startupScript: String?
     private let term: String
     private let environment: [String: String]
     private let initialWindowSize: (cols: Int, rows: Int)
@@ -232,6 +242,7 @@ public final class SSHConnection {
         port: Int,
         username: String,
         password: String,
+        startupScript: String?,
         term: String,
         environment: [String: String],
         initialWindowSize: (cols: Int, rows: Int)
@@ -241,6 +252,7 @@ public final class SSHConnection {
         self.port = port
         self.username = username
         self.password = password
+        self.startupScript = startupScript
         self.term = term
         self.environment = environment
         self.initialWindowSize = initialWindowSize
@@ -395,11 +407,17 @@ public final class SSHConnection {
                         ConnectionManager.shared.didConnect(serverId: self.serverId, connectionId: self.connectionId)
                         ConnectionManager.shared.storeConnection(self, for: self.serverId)
                         self.sessionChannel = childChannel
+                        self.sendStartupScriptIfNeeded()
                         // resize 将在 TerminalHostViewController.viewDidLayoutSubviews 中触发
                     }
                 }
             }
         }
+    }
+
+    private func sendStartupScriptIfNeeded() {
+        guard let startupScript else { return }
+        send(Data(startupScript.utf8))
     }
 
     private func handleError(_ error: Error) {
@@ -511,6 +529,7 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
             port: connectionInfo.port,
             username: connectionInfo.username,
             password: connectionInfo.password,
+            startupScript: connectionInfo.preparedStartupScript,
             term: connectionInfo.term,
             environment: connectionInfo.environment,
             initialWindowSize: (cols: cols, rows: rows)

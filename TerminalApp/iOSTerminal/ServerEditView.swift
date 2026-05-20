@@ -19,6 +19,7 @@ struct ServerEditView: View {
     @State private var port: String
     @State private var username: String
     @State private var password: String
+    @State private var startupScript: String
     @State private var showPassword: Bool = false
     
     private var isEditing: Bool { server != nil }
@@ -37,6 +38,7 @@ struct ServerEditView: View {
         _port = State(initialValue: server.map { String($0.port) } ?? "22")
         _username = State(initialValue: server?.username ?? "")
         _password = State(initialValue: server?.password ?? "")
+        _startupScript = State(initialValue: server?.startupScript ?? "")
     }
     
     private var isValid: Bool {
@@ -118,6 +120,17 @@ struct ServerEditView: View {
                         .frame(minWidth: 150)
                     }
                 }
+
+                Section(
+                    header: Text("启动脚本"),
+                    footer: Text("连接成功后会自动执行，适合放初始化命令或进入工作目录。")
+                ) {
+                    TextEditor(text: $startupScript)
+                        .frame(minHeight: 120)
+                        .font(.system(.body, design: .monospaced))
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                }
                 
                 if isEditing {
                     Section {
@@ -167,10 +180,16 @@ struct ServerEditView: View {
             port: portInt,
             username: username,
             password: password,
+            startupScript: normalizedStartupScript,
             lastConnected: server?.lastConnected
         )
         
         onSave(newServer)
         dismiss()
+    }
+
+    private var normalizedStartupScript: String? {
+        let trimmed = startupScript.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
