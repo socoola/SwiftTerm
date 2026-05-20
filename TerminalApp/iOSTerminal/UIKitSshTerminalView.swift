@@ -119,6 +119,21 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
 
     func channelActive(context: ChannelHandlerContext) {
         print("[SSH-Shell] Channel active, requesting PTY (term=\(term), cols=\(initialWindowSize.cols), rows=\(initialWindowSize.rows))")
+        
+        // 设置标准终端模式，避免光标和换行异常
+        let terminalModes = SSHTerminalModes([
+            .TTY_OP_ISPEED: 38400,
+            .TTY_OP_OSPEED: 38400,
+            .ICRNL: 1,      // 输入: CR → NL (让回车键正常工作)
+            .ONLCR: 1,      // 输出: NL → CR+NL (换行时回到行首)
+            .ECHO: 1,       // 回显输入
+            .ICANON: 1,     // 规范模式(行缓冲)
+            .ISIG: 1,       // 启用信号字符(Ctrl+C 等)
+            .ECHOE: 1,      // 退格时擦除字符
+            .ECHOK: 1,      // 换行时回显
+            .OPOST: 1,      // 启用输出处理
+        ])
+        
         let pty = SSHChannelRequestEvent.PseudoTerminalRequest(
             wantReply: false,
             term: term,
@@ -126,7 +141,7 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
             terminalRowHeight: initialWindowSize.rows,
             terminalPixelWidth: 0,
             terminalPixelHeight: 0,
-            terminalModes: SSHTerminalModes([:])
+            terminalModes: terminalModes
         )
         context.triggerUserOutboundEvent(pty, promise: nil)
 
@@ -371,6 +386,7 @@ public final class SSHConnection {
                         ConnectionManager.shared.didConnect(serverId: self.serverId)
                         ConnectionManager.shared.storeConnection(self, for: self.serverId)
                         self.sessionChannel = childChannel
+                        // resize 将在 TerminalHostViewController.viewDidLayoutSubviews 中触发
                     }
                 }
             }
@@ -482,6 +498,16 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
     
     public func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
         sshConnection?.resize(cols: newCols, rows: newRows)
+    }
+    
+    /// 由外部（如 TerminalHostViewController）在 view layout 完成后调用，
+    /// 确保 SSH 连接使用正确的终端尺寸
+    func updateConnectionSize() {
+        let terminal = getTerminal()
+        let cols = terminal.cols > 0 ? terminal.cols : 80
+        let rows = terminal.rows > 0 ? terminal.rows : 24
+        print("[SshTerminalView] updateConnectionSize: \(cols)x\(rows)")
+        sshConnection?.resize(cols: cols, rows: rows)
     }
     
     public func send(source: TerminalView, data: ArraySlice<UInt8>) {

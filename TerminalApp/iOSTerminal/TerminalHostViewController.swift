@@ -10,6 +10,7 @@ import UIKit
 final class TerminalHostViewController: UIViewController {
     private let terminalView = SshTerminalView(frame: .zero)
     private var connectionInfo: SSHConnectionInfo?
+    private var lastTerminalSize: CGSize = .zero
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -38,6 +39,22 @@ final class TerminalHostViewController: UIViewController {
         if let info = connectionInfo {
             terminalView.configure(connectionInfo: info)
         }
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // 只在终端尺寸真正变化且有效时触发 resize
+        let currentSize = terminalView.bounds.size
+        guard currentSize != lastTerminalSize,
+              currentSize.width > 0,
+              currentSize.height > 0 else {
+            return
+        }
+        lastTerminalSize = currentSize
+        
+        print("[TerminalHostVC] Layout changed: \(currentSize)")
+        terminalView.updateConnectionSize()
     }
 
     override func viewDidAppear(_ animated: Bool) {
