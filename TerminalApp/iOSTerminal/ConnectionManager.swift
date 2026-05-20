@@ -16,6 +16,7 @@ enum ConnectionStatus: Equatable {
 }
 
 protocol ManagedConnection: AnyObject {
+    var connectionId: UUID { get }
     func disconnect()
 }
 
@@ -29,7 +30,12 @@ class ConnectionManager: ObservableObject {
     @Published var connectionStatuses: [UUID: ConnectionStatus] = [:]
     
     // 活跃的 SSH 连接（下滑关闭后保持）
-    private var connections: [UUID: any ManagedConnection] = [:]
+    private struct StoredConnection {
+        let id: UUID
+        let connection: any ManagedConnection
+    }
+
+    private var connections: [UUID: StoredConnection] = [:]
     
     // 数据缓冲区（每个服务器最近的输出，用于重新打开时回放）
     private var dataBuffers: [UUID: Data] = [:]
@@ -41,6 +47,14 @@ class ConnectionManager: ObservableObject {
     private var activeServerId: UUID?
     
     private init() {}
+
+    private func performStateUpdate(_ update: @escaping () -> Void) {
+        if Thread.isMainThread {
+            update()
+        } else {
+            DispatchQueue.main.async(execute: update)
+        }
+    }
     
     // MARK: - 终端视图管理
     
@@ -102,55 +116,70 @@ class ConnectionManager: ObservableObject {
     // MARK: - 连接管理
     
     func storeConnection(_ connection: any ManagedConnection, for serverId: UUID) {
-        connections[serverId] = connection
+        performStateUpdate {
+            self.connections[serverId] = StoredConnection(id: connection.connectionId, connection: connection)
+        }
     }
     
     func getConnection(for serverId: UUID) -> SSHConnection? {
-        connections[serverId] as? SSHConnection
+        connections[serverId]?.connection as? SSHConnection
     }
     
-    func connect(serverId: UUID) {
-        connectionStatuses[serverId] = .connecting
+    func connect(serverId: UUID, connectionId: UUID? = nil) {
+        performStateUpdate {
+            guard self.matchesCurrentConnection(serverId: serverId, connectionId: connectionId) else { return }
+            self.connectionStatuses[serverId] = .connecting
+        }
     }
     
-    func didConnect(serverId: UUID) {
-        connectionStatuses[serverId] = .connected
+    func didConnect(serverId: UUID, connectionId: UUID? = nil) {
+        performStateUpdate {
+            guard self.matchesCurrentConnection(serverId: serverId, connectionId: connectionId) else { return }
+            self.connectionStatuses[serverId] = .connected
+        }
     }
     
     func disconnect(serverId: UUID) {
-        if let connection = connections.removeValue(forKey: serverId) {
-            connection.disconnect()
-        }
-        dataBuffers.removeValue(forKey: serverId)
-        connectionStatuses[serverId] = .disconnected
-        if activeServerId == serverId {
-            activeTerminalOwner = nil
-            activeOutputHandler = nil
-            activeServerId = nil
-        }
-    }
-    
-    func didError(serverId: UUID, error: String) {
-        connections.removeValue(forKey: serverId)
-        connectionStatuses[serverId] = .error(error)
-        // 3秒后清除错误状态
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            if self?.connectionStatuses[serverId] == .error(error) {
-                self?.connectionStatuses[serverId] = .disconnected
+        performStateUpdate {
+            if let connection = self.connections.removeValue(forKey: serverId) {
+                connection.connection.disconnect()
+            }
+            self.dataBuffers.removeValue(forKey: serverId)
+            self.connectionStatuses[serverId] = .disconnected
+            if self.activeServerId == serverId {
+                self.activeTerminalOwner = nil
+                self.activeOutputHandler = nil
+                self.activeServerId = nil
             }
         }
     }
     
-    func didDisconnect(serverId: UUID, clearBuffer: Bool = false) {
-        connections.removeValue(forKey: serverId)
-        if clearBuffer {
-            dataBuffers.removeValue(forKey: serverId)
+    func didError(serverId: UUID, connectionId: UUID? = nil, error: String) {
+        performStateUpdate {
+            guard self.matchesCurrentConnection(serverId: serverId, connectionId: connectionId) else { return }
+            self.connections.removeValue(forKey: serverId)
+            self.connectionStatuses[serverId] = .error(error)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                if self?.connectionStatuses[serverId] == .error(error) {
+                    self?.connectionStatuses[serverId] = .disconnected
+                }
+            }
         }
-        connectionStatuses[serverId] = .disconnected
-        if activeServerId == serverId {
-            activeTerminalOwner = nil
-            activeOutputHandler = nil
-            activeServerId = nil
+    }
+    
+    func didDisconnect(serverId: UUID, connectionId: UUID? = nil, clearBuffer: Bool = false) {
+        performStateUpdate {
+            guard self.matchesCurrentConnection(serverId: serverId, connectionId: connectionId) else { return }
+            self.connections.removeValue(forKey: serverId)
+            if clearBuffer {
+                self.dataBuffers.removeValue(forKey: serverId)
+            }
+            self.connectionStatuses[serverId] = .disconnected
+            if self.activeServerId == serverId {
+                self.activeTerminalOwner = nil
+                self.activeOutputHandler = nil
+                self.activeServerId = nil
+            }
         }
     }
     
@@ -169,6 +198,11 @@ class ConnectionManager: ObservableObject {
         activeTerminalOwner = nil
         activeOutputHandler = nil
         activeServerId = nil
+    }
+
+    private func matchesCurrentConnection(serverId: UUID, connectionId: UUID?) -> Bool {
+        guard let connectionId else { return true }
+        return connections[serverId]?.id == connectionId
     }
 }
 

@@ -94,17 +94,20 @@ private final class SSHErrorHandler: ChannelInboundHandler {
 private final class SSHShellChannelHandler: ChannelInboundHandler {
     typealias InboundIn = SSHChannelData
 
+    private let connectionId: UUID
     private let serverId: UUID
     private let term: String
     private let environment: [String: String]
     private let initialWindowSize: (cols: Int, rows: Int)
 
     init(
+        connectionId: UUID,
         serverId: UUID,
         term: String,
         environment: [String: String],
         initialWindowSize: (cols: Int, rows: Int)
     ) {
+        self.connectionId = connectionId
         self.serverId = serverId
         self.term = term
         self.environment = environment
@@ -200,7 +203,7 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
     func channelInactive(context: ChannelHandlerContext) {
         print("[SSH-Shell] Channel became inactive")
         DispatchQueue.main.async {
-            ConnectionManager.shared.didDisconnect(serverId: self.serverId)
+            ConnectionManager.shared.didDisconnect(serverId: self.serverId, connectionId: self.connectionId)
         }
         context.fireChannelInactive()
     }
@@ -209,6 +212,7 @@ private final class SSHShellChannelHandler: ChannelInboundHandler {
 // MARK: - SSHConnection (公开给 ConnectionManager 使用)
 
 public final class SSHConnection {
+    let connectionId = UUID()
     private let serverId: UUID
     private let host: String
     private let port: Int
@@ -220,6 +224,7 @@ public final class SSHConnection {
     private var group: EventLoopGroup?
     private var channel: Channel?
     private var sessionChannel: Channel?
+    private var isDisconnecting = false
 
     init(
         serverId: UUID,
@@ -243,7 +248,7 @@ public final class SSHConnection {
 
     func connect() {
         print("[SSH-Connection] Starting connection to \(host):\(port) as \(username)")
-        ConnectionManager.shared.connect(serverId: serverId)
+        ConnectionManager.shared.connect(serverId: serverId, connectionId: connectionId)
         let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.group = group
 
@@ -282,8 +287,7 @@ public final class SSHConnection {
             switch result {
             case .failure(let error):
                 print("[SSH-Connection] TCP connection failed: \(error)")
-                ConnectionManager.shared.didError(serverId: self.serverId, error: error.localizedDescription)
-                self.handleError(error)
+                self.reportError(error)
                 self.shutdownGroup()
             case .success(let channel):
                 print("[SSH-Connection] TCP connected successfully, local: \(channel.localAddress?.description ?? "unknown"), remote: \(channel.remoteAddress?.description ?? "unknown")")
@@ -326,6 +330,7 @@ public final class SSHConnection {
 
     func disconnect() {
         print("[SSH-Connection] Disconnecting...")
+        isDisconnecting = true
         if let channel, let group {
             channel.closeFuture.whenComplete { [weak self] _ in
                 print("[SSH-Connection] Channel closed")
@@ -344,7 +349,7 @@ public final class SSHConnection {
             switch result {
             case .failure(let error):
                 print("[SSH-Connection] Failed to get SSH handler: \(error)")
-                self.handleError(error)
+                self.reportError(error)
             case .success(let sshHandler):
                 print("[SSH-Connection] Got SSH handler, creating session channel...")
                 let promise = channel.eventLoop.makePromise(of: Channel.self)
@@ -361,6 +366,7 @@ public final class SSHConnection {
                     print("[SSH-Connection] Configuring shell channel handler...")
                     return childChannel.eventLoop.makeCompletedFuture {
                         let handler = SSHShellChannelHandler(
+                            connectionId: self.connectionId,
                             serverId: self.serverId,
                             term: self.term,
                             environment: self.environment,
@@ -382,11 +388,11 @@ public final class SSHConnection {
                     switch result {
                     case .failure(let error):
                         print("[SSH-Connection] Session channel creation failed: \(error)")
-                        ConnectionManager.shared.didError(serverId: self.serverId, error: error.localizedDescription)
-                        self.handleError(error)
+                        self.reportError(error)
                     case .success(let childChannel):
                         print("[SSH-Connection] Session channel created successfully")
-                        ConnectionManager.shared.didConnect(serverId: self.serverId)
+                        self.isDisconnecting = false
+                        ConnectionManager.shared.didConnect(serverId: self.serverId, connectionId: self.connectionId)
                         ConnectionManager.shared.storeConnection(self, for: self.serverId)
                         self.sessionChannel = childChannel
                         // resize 将在 TerminalHostViewController.viewDidLayoutSubviews 中触发
@@ -397,8 +403,30 @@ public final class SSHConnection {
     }
 
     private func handleError(_ error: Error) {
+        guard shouldReport(error: error) else { return }
         print("[SSH-Connection] ERROR: \(error)")
         ConnectionManager.shared.receiveText(serverId: serverId, text: "[ERROR] \(error)\n")
+    }
+
+    private func reportError(_ error: Error) {
+        guard shouldReport(error: error) else { return }
+        ConnectionManager.shared.didError(
+            serverId: serverId,
+            connectionId: connectionId,
+            error: error.localizedDescription
+        )
+        handleError(error)
+    }
+
+    private func shouldReport(error: Error) -> Bool {
+        if isDisconnecting {
+            return false
+        }
+        let message = String(describing: error)
+        if message.contains("tcpShutdown") || message.contains("already closed") {
+            return false
+        }
+        return true
     }
 
     private func shutdownGroup() {

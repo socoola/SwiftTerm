@@ -40,11 +40,13 @@ final class ConnectionFlowTests: XCTestCase {
         let connection = FakeConnection()
 
         ConnectionManager.shared.storeConnection(connection, for: serverId)
-        ConnectionManager.shared.didConnect(serverId: serverId)
+        ConnectionManager.shared.didConnect(serverId: serverId, connectionId: connection.connectionId)
+        drainMainQueue()
 
         XCTAssertTrue(ConnectionManager.shared.isConnected(serverId))
 
         ConnectionManager.shared.disconnect(serverId: serverId)
+        drainMainQueue()
 
         XCTAssertTrue(connection.didDisconnect)
         XCTAssertEqual(ConnectionManager.shared.status(for: serverId), .disconnected)
@@ -56,12 +58,31 @@ final class ConnectionFlowTests: XCTestCase {
         let connection = FakeConnection()
 
         ConnectionManager.shared.storeConnection(connection, for: serverId)
-        ConnectionManager.shared.didConnect(serverId: serverId)
+        ConnectionManager.shared.didConnect(serverId: serverId, connectionId: connection.connectionId)
+        drainMainQueue()
 
-        ConnectionManager.shared.didError(serverId: serverId, error: "boom")
+        ConnectionManager.shared.didError(serverId: serverId, connectionId: connection.connectionId, error: "boom")
+        drainMainQueue()
 
         XCTAssertEqual(ConnectionManager.shared.status(for: serverId), .error("boom"))
         XCTAssertFalse(ConnectionManager.shared.isConnected(serverId))
+    }
+
+    func testStaleDisconnectDoesNotOverrideNewConnectionStatus() {
+        let serverId = UUID()
+        let oldConnection = FakeConnection()
+        let newConnection = FakeConnection()
+
+        ConnectionManager.shared.storeConnection(oldConnection, for: serverId)
+        ConnectionManager.shared.didConnect(serverId: serverId, connectionId: oldConnection.connectionId)
+        ConnectionManager.shared.storeConnection(newConnection, for: serverId)
+        ConnectionManager.shared.connect(serverId: serverId, connectionId: newConnection.connectionId)
+        ConnectionManager.shared.didDisconnect(serverId: serverId, connectionId: oldConnection.connectionId)
+        ConnectionManager.shared.didConnect(serverId: serverId, connectionId: newConnection.connectionId)
+        drainMainQueue()
+
+        XCTAssertEqual(ConnectionManager.shared.status(for: serverId), .connected)
+        XCTAssertTrue(ConnectionManager.shared.isConnected(serverId))
     }
 
     func testQuickConnectDisconnectHelperDisconnectsAndClearsSession() {
@@ -111,6 +132,7 @@ private final class OutputSink: NSObject {
 }
 
 private final class FakeConnection: ManagedConnection {
+    let connectionId = UUID()
     private(set) var didDisconnect = false
 
     func disconnect() {
