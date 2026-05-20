@@ -437,7 +437,7 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
 
     func configure(connectionInfo: SSHConnectionInfo) {
         print("[SshTerminalView] Configuring with host: \(connectionInfo.host):\(connectionInfo.port), user: \(connectionInfo.username)")
-        
+
         // 如果配置信息相同，只是重新注册视图
         if configuredInfo == connectionInfo {
             print("[SshTerminalView] Same connection info, re-registering")
@@ -445,8 +445,9 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
             return
         }
 
+        resetTerminalState()
         configuredInfo = connectionInfo
-        
+
         // 检查是否已有活跃连接
         if let existing = ConnectionManager.shared.getConnection(for: connectionInfo.serverId) {
             print("[SshTerminalView] Reusing existing connection")
@@ -490,6 +491,11 @@ public class SshTerminalView: TerminalView, TerminalViewDelegate {
         ConnectionManager.shared.storeConnection(connection, for: connectionInfo.serverId)
         ConnectionManager.shared.registerTerminalView(self, for: connectionInfo.serverId)
         connection.connect()
+    }
+
+    private func resetTerminalState() {
+        clearSelection()
+        getTerminal().resetToInitialState()
     }
 
     // TerminalViewDelegate conformance

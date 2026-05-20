@@ -11,6 +11,9 @@ final class TerminalHostViewController: UIViewController {
     private let terminalView = SshTerminalView(frame: .zero)
     private var connectionInfo: SSHConnectionInfo?
     private var lastTerminalSize: CGSize = .zero
+    private var didApplyInitialConnection = false
+    private var pendingLayoutWorkItem: DispatchWorkItem?
+    private let layoutSettleDelay: TimeInterval = 0.12
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -36,25 +39,22 @@ final class TerminalHostViewController: UIViewController {
 
         applySettings()
 
-        if let info = connectionInfo {
-            terminalView.configure(connectionInfo: info)
-        }
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
-        // 只在终端尺寸真正变化且有效时触发 resize
+
         let currentSize = terminalView.bounds.size
-        guard currentSize != lastTerminalSize,
-              currentSize.width > 0,
-              currentSize.height > 0 else {
+        guard currentSize.width > 0, currentSize.height > 0 else {
             return
         }
-        lastTerminalSize = currentSize
-        
-        print("[TerminalHostVC] Layout changed: \(currentSize)")
-        terminalView.updateConnectionSize()
+
+        if currentSize != lastTerminalSize {
+            lastTerminalSize = currentSize
+            print("[TerminalHostVC] Layout changed: \(currentSize)")
+        }
+
+        scheduleTerminalSetup()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -73,11 +73,38 @@ final class TerminalHostViewController: UIViewController {
         }
         connectionInfo = info
         if isViewLoaded {
-            terminalView.configure(connectionInfo: info)
+            didApplyInitialConnection = false
+            scheduleTerminalSetup()
         }
     }
     
     private func applySettings() {
         SettingsStore.shared.apply(to: terminalView)
+    }
+
+    private func scheduleTerminalSetup() {
+        guard isViewLoaded,
+              lastTerminalSize.width > 0,
+              lastTerminalSize.height > 0 else {
+            return
+        }
+
+        pendingLayoutWorkItem?.cancel()
+
+        let expectedSize = lastTerminalSize
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            guard self.lastTerminalSize == expectedSize else { return }
+
+            if !self.didApplyInitialConnection, let info = self.connectionInfo {
+                self.didApplyInitialConnection = true
+                self.terminalView.configure(connectionInfo: info)
+            }
+
+            self.terminalView.updateConnectionSize()
+        }
+
+        pendingLayoutWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + layoutSettleDelay, execute: workItem)
     }
 }
